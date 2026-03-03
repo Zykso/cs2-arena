@@ -62,8 +62,41 @@ else
     echo "[3/4] .env already exists, skipping."
 fi
 
+# Install auto-update systemd timer
+echo "[4/5] Installing auto-update timer (checks GitHub every 5 minutes)..."
+
+cat > /etc/systemd/system/cs2-arena-update.service <<'SERVICE'
+[Unit]
+Description=CS2 Arena auto-update
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/cs2-arena/update.sh
+WorkingDirectory=/opt/cs2-arena
+SERVICE
+
+cat > /etc/systemd/system/cs2-arena-update.timer <<'TIMER'
+[Unit]
+Description=Run CS2 Arena auto-update every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+TIMER
+
+chmod +x "$REPO_DIR/update.sh"
+systemctl daemon-reload
+systemctl enable --now cs2-arena-update.timer
+echo "Auto-update timer installed."
+
 # Start services
-echo "[4/4] Starting CS2 Arena with Docker Compose..."
+echo "[5/5] Starting CS2 Arena with Docker Compose..."
 docker compose up -d --build
 
 echo ""
@@ -72,7 +105,8 @@ SERVER_IP=$(hostname -I | awk '{print $1}')
 echo "CS2 Arena is running at: http://$SERVER_IP"
 echo ""
 echo "Useful commands:"
-echo "  View logs:    docker compose logs -f        (run from $REPO_DIR)"
-echo "  Stop:         docker compose down"
-echo "  Restart:      docker compose restart"
-echo "  Update:       git pull && docker compose up -d --build"
+echo "  View logs:       docker compose logs -f        (run from $REPO_DIR)"
+echo "  Stop:            docker compose down"
+echo "  Restart:         docker compose restart"
+echo "  Update log:      tail -f /var/log/cs2-arena-update.log"
+echo "  Timer status:    systemctl status cs2-arena-update.timer"
