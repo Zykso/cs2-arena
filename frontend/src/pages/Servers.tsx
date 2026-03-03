@@ -261,28 +261,72 @@ export default function Servers() {
             {/* Quick Commands */}
             {activeTab === 'status' && (
               <div className="bg-[#1a1d27] border border-[#2a2d3e] rounded-xl p-4">
-                <h3 className="font-medium mb-3 text-sm text-slate-400 uppercase tracking-wider">Quick Commands</h3>
+                <h3 className="font-medium mb-1 text-sm text-slate-400 uppercase tracking-wider">Quick Commands</h3>
+                <p className="text-xs text-slate-600 mb-3">Each button sends via RCON and switches to the Console tab so you can see the response.</p>
+
+                {/* Warmup */}
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Warmup</p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {[
+                    { label: 'Start Warmup',      cmd: 'mp_warmup_start',           desc: 'Begin warmup phase' },
+                    { label: 'End Warmup',         cmd: 'mp_warmup_end',             desc: 'End warmup immediately' },
+                    { label: 'Pause Warmup Timer', cmd: 'mp_warmup_pausetimer 1',    desc: 'Keeps warmup indefinitely' },
+                    { label: 'Resume Warmup Timer',cmd: 'mp_warmup_pausetimer 0',    desc: 'Let warmup timer count down' },
+                  ].map(({ label, cmd, desc }) => (
+                    <QuickBtn key={label} label={label} cmd={cmd} desc={desc}
+                      onClick={() => { rconMutation.mutate(cmd); setActiveTab('console'); setRconCmd(cmd); }} />
+                  ))}
+                </div>
+
+                {/* Match */}
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Match</p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {[
+                    { label: 'Restart Game',       cmd: 'mp_restartgame 1',          desc: 'Restart current match (1s delay)' },
+                    { label: 'Competitive Rules',  cmd: 'mp_maxrounds 30; mp_overtime_enable 1', desc: '30 rounds + overtime on' },
+                    { label: 'Enable Overtime',    cmd: 'mp_overtime_enable 1',       desc: 'Enable overtime rounds' },
+                    { label: 'Disable Overtime',   cmd: 'mp_overtime_enable 0',       desc: 'No overtime — first to 16 wins' },
+                    { label: 'Set Halftime 60s',   cmd: 'mp_halftime_duration 60',    desc: '60-second halftime break' },
+                    { label: 'Set Halftime 15s',   cmd: 'mp_halftime_duration 15',    desc: 'Short 15-second halftime' },
+                  ].map(({ label, cmd, desc }) => (
+                    <QuickBtn key={label} label={label} cmd={cmd} desc={desc}
+                      onClick={() => { rconMutation.mutate(cmd); setActiveTab('console'); setRconCmd(cmd); }} />
+                  ))}
+                </div>
+
+                {/* Practice */}
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Practice</p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {[
+                    { label: 'Enable sv_cheats',   cmd: 'sv_cheats 1',               desc: 'Required for most practice commands' },
+                    { label: 'Infinite Ammo',       cmd: 'sv_infinite_ammo 2',        desc: 'Unlimited mags, still reload' },
+                    { label: 'Grenade Preview',     cmd: 'sv_grenade_trajectory_prac_pipreview 1', desc: 'Show grenade throw trajectory' },
+                    { label: 'Show Impacts',        cmd: 'sv_showimpacts 1',           desc: 'Show bullet impact markers' },
+                    { label: 'No Team Limits',      cmd: 'mp_limitteams 0; mp_autoteambalance 0', desc: 'Allow uneven teams' },
+                    { label: 'No Freeze Time',      cmd: 'mp_freezetime 0',            desc: 'Skip buy phase freeze' },
+                  ].map(({ label, cmd, desc }) => (
+                    <QuickBtn key={label} label={label} cmd={cmd} desc={desc}
+                      onClick={() => { rconMutation.mutate(cmd); setActiveTab('console'); setRconCmd(cmd); }} />
+                  ))}
+                </div>
+
+                {/* Bots & Info */}
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Bots & Info</p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { label: 'Warmup Mode', cmd: 'mp_warmup_start' },
-                    { label: 'End Warmup', cmd: 'mp_warmup_end' },
-                    { label: 'Knife Round', cmd: 'mp_give_player_c4 0; mp_restartgame 1' },
-                    { label: 'Practice Mode', cmd: 'sv_cheats 1; mp_limitteams 0; mp_autoteambalance 0' },
-                    { label: 'Show Scores', cmd: 'mp_display_kill_assists 1' },
-                    { label: 'Status', cmd: 'status' },
-                    { label: 'Say Hello', cmd: 'say "CS2 Arena bot online!"' },
-                    { label: 'Kick Bots', cmd: 'bot_kick' },
-                  ].map(({ label, cmd }) => (
-                    <button key={label}
-                      onClick={() => {
-                        rconMutation.mutate(cmd);
-                        setActiveTab('console');
-                        setRconCmd(cmd);
-                      }}
-                      className="px-3 py-2 bg-[#0f1117] hover:bg-[#161921] border border-[#2a2d3e] hover:border-slate-500 rounded-lg text-sm text-slate-300 text-left transition-colors">
-                      {label}
-                    </button>
+                    { label: 'Kick All Bots',       cmd: 'bot_kick',                  desc: 'Remove all bots from server' },
+                    { label: 'Add CT Bot',           cmd: 'bot_add_ct',                desc: 'Add one bot to CT side' },
+                    { label: 'Add T Bot',            cmd: 'bot_add_t',                 desc: 'Add one bot to T side' },
+                    { label: 'Status',               cmd: 'status',                    desc: 'Show players + server info' },
+                    { label: 'Server Announce',      cmd: 'say "Server managed by CS2 Arena"', desc: 'Send message to all players' },
+                  ].map(({ label, cmd, desc }) => (
+                    <QuickBtn key={label} label={label} cmd={cmd} desc={desc}
+                      onClick={() => { rconMutation.mutate(cmd); setActiveTab('console'); setRconCmd(cmd); }} />
                   ))}
+                </div>
+
+                <div className="mt-4 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg text-xs text-yellow-400/70">
+                  <strong>Note:</strong> Knife round requires a plugin (e.g. MatchZy <code>.rk</code>). There is no native CS2 RCON command for it.
                 </div>
               </div>
             )}
@@ -379,5 +423,16 @@ export default function Servers() {
         )}
       </div>
     </div>
+  );
+}
+
+function QuickBtn({ label, cmd, desc, onClick }: { label: string; cmd: string; desc: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick}
+      title={`${cmd}\n${desc}`}
+      className="px-3 py-2 bg-[#0f1117] hover:bg-[#161921] border border-[#2a2d3e] hover:border-slate-500 rounded-lg text-left transition-colors group">
+      <p className="text-sm text-slate-300 font-medium leading-tight">{label}</p>
+      <p className="text-[11px] text-slate-600 group-hover:text-slate-500 mt-0.5 leading-tight">{desc}</p>
+    </button>
   );
 }
