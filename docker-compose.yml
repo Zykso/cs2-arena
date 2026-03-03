@@ -1,0 +1,35 @@
+services:
+  backend:
+    build: ./backend
+    container_name: cs2-arena-backend
+    restart: always
+    volumes:
+      - db_data:/app/prisma
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=file:/app/prisma/tournament.db
+      - SESSION_SECRET=${SESSION_SECRET}
+      - STEAM_API_KEY=${STEAM_API_KEY}
+      - CLIENT_URL=${CLIENT_URL:-http://localhost}
+      - API_URL=${API_URL:-http://localhost/api}
+    networks:
+      - cs2arena
+
+  frontend:
+    build: ./frontend
+    container_name: cs2-arena-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cs2arena
+
+volumes:
+  db_data:
+
+networks:
+  cs2arena:
+    driver: bridge
