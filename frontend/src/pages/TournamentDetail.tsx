@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Trophy, Users, Play, CheckCircle, Clock, Plus, X, Edit2,
-  Server, Trash2, RotateCcw, Ban, ChevronDown, ChevronUp, Save,
+  Trophy, Users, Clock, Plus, X, Edit2,
+  Trash2, Save,
 } from 'lucide-react';
 import { tournaments, matches as matchApi, teams as teamsApi, servers as serversApi } from '../api';
 import { useAuth } from '../hooks/useAuth';
+import BracketView from '../components/BracketView';
 
 const STATUS_BADGE: Record<string, string> = {
   upcoming:     'bg-slate-500/10 text-slate-400',
@@ -15,13 +16,6 @@ const STATUS_BADGE: Record<string, string> = {
   completed:    'bg-orange-500/10 text-orange-400',
 };
 
-const MATCH_STATUS_COLOR: Record<string, string> = {
-  scheduled: 'text-slate-400',
-  live:      'text-green-400',
-  completed: 'text-slate-500',
-  cancelled: 'text-red-400',
-  bye:       'text-slate-600',
-};
 
 export default function TournamentDetail() {
   const { id } = useParams<{ id: string }>();
@@ -33,7 +27,6 @@ export default function TournamentDetail() {
   const [showEdit, setShowEdit]           = useState(false);
   const [resultModal, setResultModal]     = useState<any>(null);
   const [editMatchModal, setEditMatchModal] = useState<any>(null);
-  const [expandedRounds, setExpandedRounds] = useState<Record<string, boolean>>({});
 
   // Edit tournament form
   const [editForm, setEditForm] = useState<any>({});
@@ -120,13 +113,6 @@ export default function TournamentDetail() {
 
   const hasBracket = t.matches.length > 0;
 
-  const matchesByRound = t.matches.reduce((acc: any, m: any) => {
-    const r = m.round || 1;
-    acc[r] = acc[r] || [];
-    acc[r].push(m);
-    return acc;
-  }, {});
-
   const openEdit = () => {
     setEditForm({
       name: t.name,
@@ -152,9 +138,6 @@ export default function TournamentDetail() {
     const winnerId = s1 > s2 ? resultModal.team1Id : s2 > s1 ? resultModal.team2Id : null;
     setResult.mutate({ matchId: resultModal.id, score1: s1, score2: s2, winnerId });
   };
-
-  const toggleRound = (round: string) =>
-    setExpandedRounds(prev => ({ ...prev, [round]: !prev[round] }));
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -449,7 +432,7 @@ export default function TournamentDetail() {
           )}
         </div>
 
-        {/* ── Bracket / Matches ── */}
+        {/* ── Bracket ── */}
         <div className="lg:col-span-3">
           {!hasBracket ? (
             <div className="bg-[#1a1d27] border border-[#2a2d3e] rounded-xl p-16 text-center text-slate-500">
@@ -460,45 +443,23 @@ export default function TournamentDetail() {
                 : isAdmin && <p className="text-sm mt-1">Use the "Generate Bracket" button to start</p>}
             </div>
           ) : (
-            <div className="space-y-4">
-              {Object.entries(matchesByRound).map(([round, roundMatches]: [string, any]) => {
-                const label = roundMatches[0]?.roundName || `Round ${round}`;
-                const isOpen = expandedRounds[round] !== false; // open by default
-                return (
-                  <div key={round} className="bg-[#1a1d27] border border-[#2a2d3e] rounded-xl overflow-hidden">
-                    <button onClick={() => toggleRound(round)}
-                      className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/2 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold">{label}</span>
-                        <span className="text-xs text-slate-500">{roundMatches.length} matches</span>
-                        <span className="text-xs text-green-400">
-                          {roundMatches.filter((m: any) => m.status === 'completed').length}/{roundMatches.length} done
-                        </span>
-                      </div>
-                      {isOpen ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
-                    </button>
-
-                    {isOpen && (
-                      <div className="border-t border-[#2a2d3e] divide-y divide-[#2a2d3e]">
-                        {roundMatches.map((match: any) => (
-                          <MatchRow
-                            key={match.id}
-                            match={match}
-                            isAdmin={isAdmin}
-                            serverList={serverList}
-                            onStart={() => startMatch.mutate(match.id)}
-                            onResult={() => openResult(match)}
-                            onEdit={() => setEditMatchModal({ ...match })}
-                            onCancel={() => { if (confirm('Cancel this match?')) cancelMatch.mutate(match.id); }}
-                            onReset={() => { if (confirm('Reset this match to scheduled?')) resetMatch.mutate(match.id); }}
-                            onDelete={() => { if (confirm('Delete this match? This cannot be undone.')) deleteMatch.mutate(match.id); }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="bg-[#1a1d27] border border-[#2a2d3e] rounded-xl p-6">
+              {isAdmin && (
+                <p className="text-xs text-slate-500 mb-4">
+                  Hover over a match to reveal controls.
+                </p>
+              )}
+              <BracketView
+                tournament={t}
+                isAdmin={isAdmin}
+                serverList={serverList}
+                onStart={(matchId) => startMatch.mutate(matchId)}
+                onResult={(match) => openResult(match)}
+                onEdit={(match) => setEditMatchModal({ ...match })}
+                onCancel={(matchId) => { if (confirm('Cancel this match?')) cancelMatch.mutate(matchId); }}
+                onReset={(matchId) => { if (confirm('Reset this match to scheduled?')) resetMatch.mutate(matchId); }}
+                onDelete={(matchId) => { if (confirm('Delete this match?')) deleteMatch.mutate(matchId); }}
+              />
             </div>
           )}
         </div>
@@ -507,91 +468,3 @@ export default function TournamentDetail() {
   );
 }
 
-function MatchRow({ match: m, isAdmin, serverList, onStart, onResult, onEdit, onCancel, onReset, onDelete }: any) {
-  const isCompleted = m.status === 'completed';
-  const isLive      = m.status === 'live';
-  const isCancelled = m.status === 'cancelled';
-  const isBye       = m.status === 'bye';
-  const server      = serverList?.find((s: any) => s.id === m.serverId);
-
-  return (
-    <div className={`px-5 py-4 ${isCancelled ? 'opacity-50' : ''}`}>
-      <div className="flex items-center gap-4 flex-wrap">
-        {/* Teams + score */}
-        <div className="flex-1 min-w-[200px]">
-          <div className="flex items-center gap-3 mb-1">
-            <TeamChip team={m.team1} score={m.score1} isWinner={m.winnerId === m.team1Id} />
-            <span className="text-slate-600 text-xs font-medium">vs</span>
-            <TeamChip team={m.team2} score={m.score2} isWinner={m.winnerId === m.team2Id} />
-          </div>
-          <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap mt-1">
-            <span className={`flex items-center gap-1 font-medium ${MATCH_STATUS_COLOR[m.status]}`}>
-              {isLive && <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />}
-              {m.status.toUpperCase()}
-            </span>
-            {m.map && <span>· {m.map}</span>}
-            {server && <span className="flex items-center gap-1"><Server size={11} /> {server.name}</span>}
-            {m.scheduledAt && !isCompleted && !isLive && (
-              <span className="flex items-center gap-1"><Clock size={11} /> {new Date(m.scheduledAt).toLocaleString()}</span>
-            )}
-          </div>
-        </div>
-
-        {/* Admin actions */}
-        {isAdmin && !isBye && (
-          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-            {!isCompleted && !isCancelled && (
-              <>
-                {!isLive && (
-                  <button onClick={onStart}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-lg text-xs font-medium transition-colors">
-                    <Play size={11} /> Start
-                  </button>
-                )}
-                {m.team1Id && m.team2Id && (
-                  <button onClick={onResult}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 rounded-lg text-xs font-medium transition-colors">
-                    <CheckCircle size={11} /> Result
-                  </button>
-                )}
-                <button onClick={onEdit}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 border border-slate-500/20 rounded-lg text-xs font-medium transition-colors">
-                  <Edit2 size={11} /> Edit
-                </button>
-                <button onClick={onCancel}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium transition-colors">
-                  <Ban size={11} /> Cancel
-                </button>
-              </>
-            )}
-            {(isCompleted || isCancelled) && (
-              <button onClick={onReset}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-medium transition-colors">
-                <RotateCcw size={11} /> Reset
-              </button>
-            )}
-            <button onClick={onDelete}
-              className="p-1.5 hover:bg-red-500/10 text-slate-600 hover:text-red-400 border border-transparent hover:border-red-500/20 rounded-lg transition-colors">
-              <Trash2 size={13} />
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TeamChip({ team, score, isWinner }: any) {
-  if (!team) return <span className="text-slate-600 text-sm">TBD</span>;
-  return (
-    <span className={`flex items-center gap-2 text-sm ${isWinner ? 'text-orange-400 font-semibold' : 'text-slate-300'}`}>
-      <span className="w-5 h-5 rounded bg-orange-500/20 flex items-center justify-center text-xs font-bold text-orange-400 shrink-0">
-        {team.tag?.slice(0, 2)}
-      </span>
-      {team.name}
-      {score !== null && score !== undefined && (
-        <span className={`font-bold ml-1 ${isWinner ? 'text-white' : 'text-slate-500'}`}>{score}</span>
-      )}
-    </span>
-  );
-}
