@@ -28,6 +28,11 @@ export default function TeamDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['team', id] }),
   });
 
+  const resetInviteMutation = useMutation({
+    mutationFn: () => api.post(`/teams/${id}/invite/reset`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['team', id] }),
+  });
+
   if (isLoading) return <div className="flex items-center justify-center min-h-screen text-slate-400">Loading...</div>;
   if (!team) return <div className="text-center py-20 text-slate-500">Team not found.</div>;
 
@@ -44,11 +49,6 @@ export default function TeamDetail() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const resetInviteMutation = useMutation({
-    mutationFn: () => api.post(`/teams/${id}/invite/reset`).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['team', id] }),
-  });
 
   const roleIcon: Record<string, any> = { captain: Crown, coach: Shield, player: Users };
   const roleColor: Record<string, string> = { captain: 'text-yellow-400', coach: 'text-blue-400', player: 'text-slate-400' };
