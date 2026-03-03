@@ -22,7 +22,8 @@ export default function Servers() {
   });
   const [customMapInput, setCustomMapInput] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
-  const [activeTab, setActiveTab] = useState<'status' | 'maps' | 'console'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'maps' | 'console' | 'announce'>('status');
+  const [announceMsg, setAnnounceMsg] = useState('');
 
   const { data: list = [] } = useQuery({ queryKey: ['servers'], queryFn: servers.list });
   const selectedServer = list.find((s: any) => s.id === selected);
@@ -249,11 +250,16 @@ export default function Servers() {
 
             {/* Tabs */}
             <div className="flex gap-1 bg-[#0f1117] rounded-lg p-1">
-              {(['status', 'maps', 'console'] as const).map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-1.5 rounded-md text-sm font-medium capitalize transition-colors
-                    ${activeTab === tab ? 'bg-[#1a1d27] text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-                  {tab === 'status' ? 'Quick Commands' : tab === 'maps' ? 'Map Control' : 'RCON Console'}
+              {([
+                { id: 'status',   label: 'Commands' },
+                { id: 'announce', label: 'Announce' },
+                { id: 'maps',     label: 'Maps' },
+                { id: 'console',  label: 'RCON Console' },
+              ] as const).map(({ id, label }) => (
+                <button key={id} onClick={() => setActiveTab(id)}
+                  className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors
+                    ${activeTab === id ? 'bg-[#1a1d27] text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                  {label}
                 </button>
               ))}
             </div>
@@ -327,6 +333,185 @@ export default function Servers() {
 
                 <div className="mt-4 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg text-xs text-yellow-400/70">
                   <strong>Note:</strong> Knife round requires a plugin (e.g. MatchZy <code>.rk</code>). There is no native CS2 RCON command for it.
+                </div>
+              </div>
+            )}
+
+            {/* Announce (csay) */}
+            {activeTab === 'announce' && (
+              <div className="bg-[#1a1d27] border border-[#2a2d3e] rounded-xl p-4 space-y-5">
+                <div>
+                  <h3 className="font-semibold flex items-center gap-2 mb-1">
+                    <span className="text-orange-500">📢</span> Announce via csay
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Requires the{' '}
+                    <a href="https://github.com/Challengermode/cm-cs2-colorsay" target="_blank" rel="noreferrer"
+                      className="text-orange-400 hover:underline">cm-cs2-colorsay</a>{' '}
+                    CounterStrikeSharp plugin. Messages appear in player chat with colors.
+                  </p>
+                </div>
+
+                {/* Composer */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Message Composer</label>
+
+                  {/* Color palette */}
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {[
+                      { name: 'gold',        hex: '#FFD700' },
+                      { name: 'green',       hex: '#3CB371' },
+                      { name: 'lightgreen',  hex: '#90EE90' },
+                      { name: 'yellow',      hex: '#FFFF00' },
+                      { name: 'red',         hex: '#FF4444' },
+                      { name: 'darkred',     hex: '#8B0000' },
+                      { name: 'lightblue',   hex: '#ADD8E6' },
+                      { name: 'blue',        hex: '#4169E1' },
+                      { name: 'purple',      hex: '#800080' },
+                      { name: 'lightpurple', hex: '#DA70D6' },
+                      { name: 'pink',        hex: '#FFC0CB' },
+                      { name: 'white',       hex: '#FFFFFF' },
+                      { name: 'grey',        hex: '#808080' },
+                      { name: 'default',     hex: '#C8C8C8' },
+                    ].map(({ name, hex }) => (
+                      <button key={name}
+                        onClick={() => setAnnounceMsg(m => m + `{${name}}`)}
+                        title={`Insert {${name}}`}
+                        className="flex items-center gap-1 px-2 py-1 bg-[#0f1117] border border-[#2a2d3e] hover:border-slate-500 rounded text-[11px] text-slate-300 transition-colors">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    value={announceMsg}
+                    onChange={e => setAnnounceMsg(e.target.value)}
+                    placeholder={`{gold}ANNOUNCEMENT: {default}Your message here`}
+                    rows={3}
+                    className="w-full bg-[#0f1117] border border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-orange-500 resize-none"
+                  />
+
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        if (!announceMsg.trim()) return;
+                        const cmd = `csay "${announceMsg.trim()}"`;
+                        rconMutation.mutate(cmd);
+                        setActiveTab('console');
+                        setRconCmd(cmd);
+                      }}
+                      disabled={!announceMsg.trim() || rconMutation.isPending}
+                      className="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
+                      Send Announcement
+                    </button>
+                    <button onClick={() => setAnnounceMsg('')}
+                      className="px-4 py-2 border border-[#2a2d3e] hover:bg-white/5 rounded-lg text-sm text-slate-400 transition-colors">
+                      Clear
+                    </button>
+                  </div>
+
+                  {/* Live preview */}
+                  {announceMsg && (
+                    <div className="mt-2 px-3 py-2 bg-[#0a0c10] rounded-lg border border-[#2a2d3e]">
+                      <p className="text-[10px] text-slate-600 mb-1 uppercase tracking-wider">Command preview</p>
+                      <code className="text-xs text-green-400 font-mono break-all">csay "{announceMsg}"</code>
+                    </div>
+                  )}
+                </div>
+
+                {/* Templates */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Tournament Templates</label>
+                  <div className="space-y-2">
+                    {[
+                      {
+                        label: '🏆 Match Starting',
+                        desc: 'Warn players before a match begins',
+                        msg: '{gold}MATCH STARTING {default}in 60 seconds — get ready!',
+                      },
+                      {
+                        label: '⏳ Warmup Starting',
+                        desc: 'Announce warmup phase',
+                        msg: '{lightblue}WARMUP {default}has started. Use this time to warm up!',
+                      },
+                      {
+                        label: '🔪 Knife Round',
+                        desc: 'Announce knife round (requires plugin)',
+                        msg: '{yellow}KNIFE ROUND {default}— winner chooses side!',
+                      },
+                      {
+                        label: '↔️ Halftime',
+                        desc: 'Halftime side switch reminder',
+                        msg: '{lightpurple}HALFTIME {default}— switch sides! Score: CT {green}? {default}— T {red}?',
+                      },
+                      {
+                        label: '✅ Round Winner',
+                        desc: 'Announce which team won a round',
+                        msg: '{green}[TEAM NAME] {default}wins the round!',
+                      },
+                      {
+                        label: '🥇 Match Winner',
+                        desc: 'Final result announcement',
+                        msg: '{gold}MATCH OVER! {lightgreen}[TEAM NAME] {default}wins {gold}[SCORE] — {default}GG!',
+                      },
+                      {
+                        label: '🗺️ Map Veto',
+                        desc: 'Remind players about map veto',
+                        msg: '{lightblue}MAP VETO {default}is in progress — check the tournament page!',
+                      },
+                      {
+                        label: '⏸️ Match Paused',
+                        desc: 'Admin-triggered pause',
+                        msg: '{yellow}MATCH PAUSED {default}by admin — please stand by.',
+                      },
+                      {
+                        label: '▶️ Match Resumed',
+                        desc: 'Resuming after a pause',
+                        msg: '{green}MATCH RESUMED {default}— good luck, have fun!',
+                      },
+                      {
+                        label: '⚠️ Admin Warning',
+                        desc: 'Issue a rule warning to all',
+                        msg: '{darkred}WARNING: {default}Please follow the rules or you will be removed.',
+                      },
+                      {
+                        label: '🔄 Server Restart',
+                        desc: 'Warn before restarting the server',
+                        msg: '{red}SERVER RESTARTING {default}in 30 seconds — please reconnect after.',
+                      },
+                      {
+                        label: '📋 Rules Reminder',
+                        desc: 'Quick rule reminder',
+                        msg: '{gold}REMINDER: {default}No cheating, no toxic behaviour. Have fun!',
+                      },
+                    ].map(({ label, desc, msg }) => (
+                      <div key={label} className="flex items-center gap-3 p-2.5 bg-[#0f1117] border border-[#2a2d3e] hover:border-slate-600 rounded-lg transition-colors group">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-200">{label}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+                          <code className="text-[10px] text-slate-600 font-mono truncate block mt-0.5">{msg}</code>
+                        </div>
+                        <div className="flex gap-1.5 shrink-0">
+                          <button onClick={() => setAnnounceMsg(msg)}
+                            className="px-2.5 py-1.5 bg-[#1a1d27] hover:bg-[#252838] border border-[#2a2d3e] rounded text-xs text-slate-400 hover:text-slate-200 transition-colors">
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              const cmd = `csay "${msg}"`;
+                              rconMutation.mutate(cmd);
+                              setActiveTab('console');
+                              setRconCmd(cmd);
+                            }}
+                            disabled={rconMutation.isPending}
+                            className="px-2.5 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 rounded text-xs text-orange-400 font-medium transition-colors disabled:opacity-50">
+                            Send
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
