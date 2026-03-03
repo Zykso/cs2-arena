@@ -70,6 +70,23 @@ router.post('/:id/map', async (req: Request, res: Response) => {
   res.json(result);
 });
 
+// Restart game (mp_restartgame)
+router.post('/:id/restart-game', async (req: Request, res: Response) => {
+  const server = await prisma.server.findUnique({ where: { id: req.params.id } });
+  if (!server) return res.status(404).json({ error: 'Not found' });
+  const result = await sendRconCommand(server.host, server.rconPort, server.rconPassword, 'mp_restartgame 1');
+  res.json(result);
+});
+
+// Restart server process (quit — Docker/systemd will restart it)
+router.post('/:id/restart-server', async (req: Request, res: Response) => {
+  const server = await prisma.server.findUnique({ where: { id: req.params.id } });
+  if (!server) return res.status(404).json({ error: 'Not found' });
+  await sendRconCommand(server.host, server.rconPort, server.rconPassword, 'quit');
+  await prisma.server.update({ where: { id: req.params.id }, data: { status: 'offline' } });
+  res.json({ success: true, message: 'Server restart initiated' });
+});
+
 // Start a match via MatchZy
 router.post('/:id/start-match', async (req: Request, res: Response) => {
   const { team1Name, team2Name, map, matchId } = req.body;

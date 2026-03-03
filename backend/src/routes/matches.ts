@@ -95,6 +95,36 @@ router.put('/:id', async (req: Request, res: Response) => {
   res.json(match);
 });
 
+// Cancel a match
+router.put('/:id/cancel', async (req: Request, res: Response) => {
+  const match = await prisma.match.update({
+    where: { id: req.params.id },
+    data: { status: 'cancelled', completedAt: new Date() },
+    include: { team1: true, team2: true },
+  });
+  const io = req.app.get('io');
+  io.emit('match:updated', match);
+  res.json(match);
+});
+
+// Reset a match back to scheduled
+router.put('/:id/reset', async (req: Request, res: Response) => {
+  const match = await prisma.match.update({
+    where: { id: req.params.id },
+    data: { status: 'scheduled', startedAt: null, completedAt: null, score1: null, score2: null, winnerId: null },
+    include: { team1: true, team2: true },
+  });
+  const io = req.app.get('io');
+  io.emit('match:updated', match);
+  res.json(match);
+});
+
+// Delete a match
+router.delete('/:id', async (req: Request, res: Response) => {
+  await prisma.match.delete({ where: { id: req.params.id } });
+  res.json({ success: true });
+});
+
 // Submit player stats
 router.post('/:id/stats', async (req: Request, res: Response) => {
   const { stats } = req.body; // Array of { steamId, kills, deaths, assists, adr, rating, headshots }

@@ -38,6 +38,9 @@ export const matches = {
   update: (id: string, data: any) => api.put(`/matches/${id}`, data).then(r => r.data),
   setResult: (id: string, data: any) => api.put(`/matches/${id}/result`, data).then(r => r.data),
   start: (id: string) => api.put(`/matches/${id}/start`).then(r => r.data),
+  cancel: (id: string) => api.put(`/matches/${id}/cancel`).then(r => r.data),
+  reset: (id: string) => api.put(`/matches/${id}/reset`).then(r => r.data),
+  delete: (id: string) => api.delete(`/matches/${id}`),
   submitStats: (id: string, stats: any[]) => api.post(`/matches/${id}/stats`, { stats }),
 };
 
@@ -54,6 +57,8 @@ export const servers = {
   status: (id: string) => api.get(`/servers/${id}/status`).then(r => r.data),
   rcon: (id: string, command: string) => api.post(`/servers/${id}/rcon`, { command }).then(r => r.data),
   changeMap: (id: string, map: string) => api.post(`/servers/${id}/map`, { map }).then(r => r.data),
+  restartGame: (id: string) => api.post(`/servers/${id}/restart-game`).then(r => r.data),
+  restartServer: (id: string) => api.post(`/servers/${id}/restart-server`).then(r => r.data),
   startMatch: (id: string, data: any) => api.post(`/servers/${id}/start-match`, data).then(r => r.data),
 };
 
