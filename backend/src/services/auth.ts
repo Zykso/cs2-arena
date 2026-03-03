@@ -5,8 +5,8 @@ import { prisma } from './prisma';
 export function setupPassport() {
   passport.use(new SteamStrategy(
     {
-      returnURL: `${process.env.API_URL || 'http://localhost:3001'}/api/auth/steam/return`,
-      realm: process.env.API_URL || 'http://localhost:3001',
+      returnURL: `${process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3001'}/api/auth/steam/return`,
+      realm: process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3001',
       apiKey: process.env.STEAM_API_KEY || '',
     },
     async (_identifier: string, profile: any, done: Function) => {

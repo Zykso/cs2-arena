@@ -190,7 +190,7 @@ router.get('/:id/matchzy-config', async (req: Request, res: Response) => {
     map_sides: maplist.map(() => 'knife'),
     clinch_series: true,
     cvars: {
-      matchzy_remote_log_url: `${apiUrl}/api/webhooks/matchzy`,
+      matchzy_remote_log_url: `${apiUrl}/api/webhooks/matchzy/${match.id}`,
       mp_maxrounds: '24',
       mp_overtime_enable: '1',
     },

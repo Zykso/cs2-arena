@@ -4,14 +4,16 @@ import { advanceWinner } from '../services/bracket';
 
 const router = Router();
 
-router.post('/matchzy', async (req: Request, res: Response) => {
+// MatchZy POSTs to /api/webhooks/matchzy/:matchUuid so we always have the real DB id,
+// regardless of what numeric matchid MatchZy echoes back in the payload.
+router.post('/matchzy/:matchId', async (req: Request, res: Response) => {
   res.json({ ok: true }); // Respond immediately; MatchZy has a short timeout
 
   const payload = req.body;
-  if (!payload?.event || !payload?.matchid) return;
+  if (!payload?.event) return;
 
   const event: string = payload.event;
-  const matchId: string = payload.matchid;
+  const matchId: string = req.params.matchId; // real UUID from URL
   console.log(`[MatchZy] event=${event} matchId=${matchId}`);
 
   try {
