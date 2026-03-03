@@ -24,6 +24,7 @@ import matchRoutes from './routes/matches';
 import playerRoutes from './routes/players';
 import serverRoutes from './routes/servers';
 import adminRoutes from './routes/admin';
+import webhookRoutes from './routes/webhooks';
 
 const app = express();
 const httpServer = createServer(app);
@@ -62,6 +63,7 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', version: '1.0.0' });

@@ -42,6 +42,8 @@ export const matches = {
   reset: (id: string) => api.put(`/matches/${id}/reset`).then(r => r.data),
   delete: (id: string) => api.delete(`/matches/${id}`),
   submitStats: (id: string, stats: any[]) => api.post(`/matches/${id}/stats`, { stats }),
+  launch: (id: string, data: { serverId: string; map: string; bo: number }) =>
+    api.post(`/matches/${id}/launch`, data).then(r => r.data),
 };
 
 export const players = {

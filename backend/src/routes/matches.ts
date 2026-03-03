@@ -1,6 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../services/prisma';
 import { advanceWinner } from '../services/bracket';
+import { sendRconCommand } from '../services/rcon';
+
+function requireAdmin(req: any, res: any, next: any) {
+  if (!req.isAuthenticated() || !['admin', 'superadmin'].includes(req.user?.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+}
 
 const router = Router();
 
@@ -138,6 +146,80 @@ router.post('/:id/stats', async (req: Request, res: Response) => {
     )
   );
   res.json(created);
+});
+
+// Public — MatchZy fetches this to load the match config. No auth middleware.
+router.get('/:id/matchzy-config', async (req: Request, res: Response) => {
+  const match = await prisma.match.findUnique({
+    where: { id: req.params.id },
+    include: {
+      team1: { include: { players: { include: { user: true } } } },
+      team2: { include: { players: { include: { user: true } } } },
+    },
+  });
+  if (!match) return res.status(404).json({ error: 'Not found' });
+
+  const apiUrl = process.env.API_URL || 'http://localhost:3001';
+  const bo = match.bo ?? 1;
+  const maplist = match.map ? [match.map] : ['de_mirage'];
+
+  const buildPlayers = (team: any): Record<string, string> => {
+    const out: Record<string, string> = {};
+    for (const slot of team?.players ?? []) {
+      if (slot.user?.steamId) out[slot.user.steamId] = slot.user.displayName ?? 'Player';
+    }
+    return out;
+  };
+
+  res.json({
+    matchid: match.id,
+    team1: { name: match.team1?.name ?? 'Team 1', tag: match.team1?.tag ?? 'T1', players: buildPlayers(match.team1) },
+    team2: { name: match.team2?.name ?? 'Team 2', tag: match.team2?.tag ?? 'T2', players: buildPlayers(match.team2) },
+    num_maps: bo,
+    maplist,
+    map_sides: maplist.map(() => 'knife'),
+    clinch_series: true,
+    cvars: {
+      matchzy_remote_log_url: `${apiUrl}/api/webhooks/matchzy`,
+      mp_maxrounds: '24',
+      mp_overtime_enable: '1',
+    },
+  });
+});
+
+// Admin — launch a match on a CS2 server via RCON
+router.post('/:id/launch', requireAdmin, async (req: any, res: Response) => {
+  const { serverId, map, bo } = req.body;
+  if (!serverId || !map || !bo) return res.status(400).json({ error: 'serverId, map, bo required' });
+
+  const [match, server] = await Promise.all([
+    prisma.match.findUnique({ where: { id: req.params.id } }),
+    prisma.server.findUnique({ where: { id: serverId } }),
+  ]);
+  if (!match) return res.status(404).json({ error: 'Match not found' });
+  if (!server) return res.status(404).json({ error: 'Server not found' });
+
+  // Persist before RCON so config endpoint returns correct data immediately
+  await prisma.match.update({ where: { id: req.params.id }, data: { serverId, map, bo } });
+
+  const apiUrl = process.env.API_URL || 'http://localhost:3001';
+  const rconResult = await sendRconCommand(
+    server.host, server.rconPort, server.rconPassword,
+    `matchzy_loadmatch_url "${apiUrl}/api/matches/${req.params.id}/matchzy-config"`
+  );
+  if (!rconResult.success) return res.status(502).json({ error: 'RCON failed', detail: rconResult.error });
+
+  const [updatedMatch] = await Promise.all([
+    prisma.match.update({
+      where: { id: req.params.id },
+      data: { status: 'live', startedAt: new Date() },
+      include: { team1: true, team2: true },
+    }),
+    prisma.server.update({ where: { id: serverId }, data: { status: 'in_use', currentMap: map } }),
+  ]);
+
+  req.app.get('io').emit('match:live', updatedMatch);
+  res.json({ success: true, match: updatedMatch });
 });
 
 export default router;

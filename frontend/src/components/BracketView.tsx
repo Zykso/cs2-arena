@@ -36,7 +36,7 @@ interface Props {
   tournament: any;
   isAdmin: boolean;
   serverList?: any[];
-  onStart:  (matchId: string) => void;
+  onStart:  (match: any) => void;
   onResult: (match: any)      => void;
   onEdit:   (match: any)      => void;
   onCancel: (matchId: string) => void;
@@ -136,7 +136,7 @@ function EliminationBracket({ tournament, isAdmin, serverList = [], onStart, onR
               <div key={match.id} className="absolute" style={{ top, left, width: CARD_W, height: CARD_H }}>
                 <BracketCard
                   match={match} isAdmin={isAdmin} server={server}
-                  onStart={() => onStart(match.id)} onResult={() => onResult(match)}
+                  onStart={() => onStart(match)} onResult={() => onResult(match)}
                   onEdit={() => onEdit(match)}       onCancel={() => onCancel(match.id)}
                   onReset={() => onReset(match.id)}  onDelete={() => onDelete(match.id)}
                 />
@@ -202,7 +202,7 @@ function BracketCard({ match: m, isAdmin, server, onStart, onResult, onEdit, onC
           <div className="flex flex-wrap justify-center gap-1 px-2">
             {!isCompleted && !isCancelled && (
               <>
-                {!isLive && <Btn onClick={onStart} icon={<Play size={10}/>} label="Start" color="green" />}
+                {!isLive && <Btn onClick={onStart} icon={<Play size={10}/>} label="Launch" color="green" />}
                 {m.team1Id && m.team2Id && <Btn onClick={onResult} icon={<CheckCircle size={10}/>} label="Result" color="orange" />}
                 <Btn onClick={onEdit} icon={<Edit2 size={10}/>} label="Edit" color="slate" />
                 <Btn onClick={onCancel} icon={<Ban size={10}/>} label="Cancel" color="red" />
@@ -309,7 +309,7 @@ function RoundRobinView({ tournament, isAdmin, onStart, onResult, onEdit, onCanc
               <div className="divide-y divide-[#2a2d3e]">
                 {rm.map((match: any) => (
                   <RRRow key={match.id} match={match} isAdmin={isAdmin}
-                    onStart={() => onStart(match.id)} onResult={() => onResult(match)}
+                    onStart={() => onStart(match)} onResult={() => onResult(match)}
                     onEdit={() => onEdit(match)} onCancel={() => onCancel(match.id)}
                     onReset={() => onReset(match.id)} onDelete={() => onDelete(match.id)} />
                 ))}
@@ -352,7 +352,7 @@ function RRRow({ match: m, isAdmin, onStart, onResult, onEdit, onCancel, onReset
         <div className="flex items-center gap-1 shrink-0">
           {!isCompleted && !isCancelled && (
             <>
-              {!isLive && <Btn onClick={onStart} icon={<Play size={10}/>} label="Start" color="green" />}
+              {!isLive && <Btn onClick={onStart} icon={<Play size={10}/>} label="Launch" color="green" />}
               {m.team1Id && m.team2Id && <Btn onClick={onResult} icon={<CheckCircle size={10}/>} label="Result" color="orange" />}
               <Btn onClick={onEdit} icon={<Edit2 size={10}/>} label="Edit" color="slate" />
               <Btn onClick={onCancel} icon={<Ban size={10}/>} label="Cancel" color="red" />

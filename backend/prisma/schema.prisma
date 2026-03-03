@@ -99,6 +99,7 @@ model Match {
   startedAt    DateTime?
   completedAt  DateTime?
   serverId     String?  // Which CS2 server is running this match
+  bo           Int      @default(1) // best-of (1, 3, 5)
   demoUrl      String?
   createdAt    DateTime @default(now())
 

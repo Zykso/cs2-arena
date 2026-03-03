@@ -27,6 +27,8 @@ export default function TournamentDetail() {
   const [showEdit, setShowEdit]           = useState(false);
   const [resultModal, setResultModal]     = useState<any>(null);
   const [editMatchModal, setEditMatchModal] = useState<any>(null);
+  const [launchModal, setLaunchModal]     = useState<any>(null);
+  const [launchForm, setLaunchForm]       = useState({ serverId: '', map: 'de_mirage', bo: 1 });
 
   // Edit tournament form
   const [editForm, setEditForm] = useState<any>({});
@@ -77,9 +79,9 @@ export default function TournamentDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tournament', id] }),
   });
 
-  const startMatch = useMutation({
-    mutationFn: (matchId: string) => matchApi.start(matchId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tournament', id] }),
+  const launchMatch = useMutation({
+    mutationFn: ({ matchId, data }: { matchId: string; data: any }) => matchApi.launch(matchId, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tournament', id] }); setLaunchModal(null); },
   });
 
   const cancelMatch = useMutation({
@@ -124,6 +126,15 @@ export default function TournamentDetail() {
       endDate: t.endDate ? t.endDate.slice(0, 10) : '',
     });
     setShowEdit(true);
+  };
+
+  const openLaunch = (match: any) => {
+    setLaunchForm({
+      serverId: match.serverId ?? serverList[0]?.id ?? '',
+      map: match.map ?? 'de_mirage',
+      bo: match.bo ?? 1,
+    });
+    setLaunchModal(match);
   };
 
   const openResult = (match: any) => {
@@ -292,6 +303,74 @@ export default function TournamentDetail() {
         </div>
       )}
 
+      {/* ── Launch Match Modal ── */}
+      {launchModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1a1d27] border border-[#2a2d3e] rounded-2xl p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold mb-1">Launch Match</h2>
+            <p className="text-slate-500 text-sm mb-5">
+              {launchModal.team1?.name ?? 'TBD'} vs {launchModal.team2?.name ?? 'TBD'}
+            </p>
+            <div className="space-y-4">
+              {/* Server */}
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">CS2 Server</label>
+                <select value={launchForm.serverId}
+                  onChange={e => setLaunchForm(f => ({ ...f, serverId: e.target.value }))}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500">
+                  <option value="">-- Select server --</option>
+                  {serverList.map((s: any) => (
+                    <option key={s.id} value={s.id} disabled={s.status === 'in_use'}>
+                      {s.name} ({s.host}:{s.gamePort}){s.status === 'in_use' ? ' [in use]' : s.status === 'offline' ? ' [offline]' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* Map */}
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Map</label>
+                <select value={launchForm.map}
+                  onChange={e => setLaunchForm(f => ({ ...f, map: e.target.value }))}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3e] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500">
+                  {['de_mirage','de_dust2','de_inferno','de_nuke','de_overpass','de_ancient','de_vertigo','de_anubis'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Format */}
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Format</label>
+                <div className="flex gap-2">
+                  {[1, 3, 5].map(n => (
+                    <button key={n} onClick={() => setLaunchForm(f => ({ ...f, bo: n }))}
+                      className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
+                        ${launchForm.bo === n ? 'bg-orange-500 border-orange-500 text-white'
+                          : 'bg-[#0f1117] border-[#2a2d3e] text-slate-400 hover:border-orange-500/50'}`}>
+                      BO{n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {launchMatch.isError && (
+              <p className="text-red-400 text-xs mt-3">Failed to launch. Check server connection and MatchZy.</p>
+            )}
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setLaunchModal(null)}
+                className="flex-1 px-4 py-2.5 border border-[#2a2d3e] rounded-lg text-sm hover:bg-white/5 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => launchMatch.mutate({ matchId: launchModal.id, data: launchForm })}
+                disabled={launchMatch.isPending || !launchForm.serverId}
+                className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
+                {launchMatch.isPending ? 'Launching…' : 'Launch on Server'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Register Team Modal ── */}
       {showRegister && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -453,7 +532,7 @@ export default function TournamentDetail() {
                 tournament={t}
                 isAdmin={isAdmin}
                 serverList={serverList}
-                onStart={(matchId) => startMatch.mutate(matchId)}
+                onStart={(match) => openLaunch(match)}
                 onResult={(match) => openResult(match)}
                 onEdit={(match) => setEditMatchModal({ ...match })}
                 onCancel={(matchId) => { if (confirm('Cancel this match?')) cancelMatch.mutate(matchId); }}
