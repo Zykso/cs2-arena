@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  steamId     String   @unique
+  displayName String
+  avatar      String?
+  role        String   @default("user") // user, admin, superadmin
+  createdAt   DateTime @default(now())
+
+  ownedTeams  Team[]       @relation("TeamOwner")
+  playerSlots TeamPlayer[]
+}
+
+model Tournament {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  format      String   // single_elimination, double_elimination, round_robin, swiss
+  status      String   @default("upcoming") // upcoming, registration, ongoing, completed
+  maxTeams    Int      @default(16)
+  mapPool     String   @default("[]") // JSON array of map names
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teams       TournamentTeam[]
+  matches     Match[]
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  tag         String   // Short tag e.g. "NaVi"
+  logo        String?
+  ownerId     String
+  inviteCode  String?  @unique @default(uuid())
+  createdAt   DateTime @default(now())
+
+  owner       User           @relation("TeamOwner", fields: [ownerId], references: [id])
+  players     TeamPlayer[]
+  tournaments TournamentTeam[]
+  matchesAsTeam1 Match[]     @relation("Team1")
+  matchesAsTeam2 Match[]     @relation("Team2")
+  wonMatches     Match[]     @relation("Winner")
+}
+
+model TeamPlayer {
+  id       String @id @default(uuid())
+  teamId   String
+  userId   String
+  role     String @default("player") // player, captain, coach
+
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model TournamentTeam {
+  id           String @id @default(uuid())
+  tournamentId String
+  teamId       String
+  seed         Int?
+  groupName    String? // For round robin groups
+  wins         Int    @default(0)
+  losses       Int    @default(0)
+  draws        Int    @default(0)
+  points       Int    @default(0) // For swiss/round robin
+
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, teamId])
+}
+
+model Match {
+  id           String   @id @default(uuid())
+  tournamentId String
+  team1Id      String?
+  team2Id      String?
+  winnerId     String?
+  score1       Int?     // Team1 rounds won
+  score2       Int?     // Team2 rounds won
+  map          String?
+  status       String   @default("scheduled") // scheduled, live, completed, cancelled
+  round        Int?     // Round number
+  roundName    String?  // e.g. "Quarter Final", "Upper Bracket R1"
+  bracketSide  String?  // upper, lower (for double elimination)
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  serverId     String?  // Which CS2 server is running this match
+  demoUrl      String?
+  createdAt    DateTime @default(now())
+
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team1        Team?      @relation("Team1", fields: [team1Id], references: [id])
+  team2        Team?      @relation("Team2", fields: [team2Id], references: [id])
+  winner       Team?      @relation("Winner", fields: [winnerId], references: [id])
+  stats        PlayerMatchStat[]
+}
+
+model PlayerMatchStat {
+  id      String @id @default(uuid())
+  matchId String
+  steamId String
+  kills   Int    @default(0)
+  deaths  Int    @default(0)
+  assists Int    @default(0)
+  adr     Float  @default(0)
+  rating  Float  @default(0)
+  headshots Int  @default(0)
+
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, steamId])
+}
+
+model Server {
+  id        String  @id @default(uuid())
+  name      String
+  host      String
+  rconPort  Int     @default(27015)
+  rconPassword String
+  gamePort  Int     @default(27015)
+  status    String  @default("offline") // online, offline, in_use
+  currentMap String?
+  playerCount Int   @default(0)
+
+  createdAt DateTime @default(now())
+}
