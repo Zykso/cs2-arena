@@ -15,6 +15,16 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json(teams);
 });
 
+// Get team by invite code — must be before /:id to avoid being swallowed
+router.get('/invite/:code', async (req: Request, res: Response) => {
+  const team = await prisma.team.findUnique({
+    where: { inviteCode: req.params.code },
+    include: { owner: true, players: { include: { user: true } } },
+  });
+  if (!team) return res.status(404).json({ error: 'Invalid invite link' });
+  res.json(team);
+});
+
 router.get('/:id', async (req: Request, res: Response) => {
   const team = await prisma.team.findUnique({
     where: { id: req.params.id },
@@ -76,16 +86,6 @@ router.delete('/:id/players/:userId', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   await prisma.team.delete({ where: { id: req.params.id } });
   res.json({ success: true });
-});
-
-// Get team by invite code
-router.get('/invite/:code', async (req: Request, res: Response) => {
-  const team = await prisma.team.findUnique({
-    where: { inviteCode: req.params.code },
-    include: { owner: true, players: { include: { user: true } } },
-  });
-  if (!team) return res.status(404).json({ error: 'Invalid invite link' });
-  res.json(team);
 });
 
 // Join team via invite code

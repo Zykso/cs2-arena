@@ -11,6 +11,7 @@ export default function TeamDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user, isAdmin } = useAuth();
+  const [copied, setCopied] = useState(false);
 
   const { data: team, isLoading } = useQuery({
     queryKey: ['team', id],
@@ -32,7 +33,6 @@ export default function TeamDetail() {
 
   const isOwner = user?.id === team.ownerId;
   const canManage = isOwner || isAdmin;
-  const [copied, setCopied] = useState(false);
 
   const inviteUrl = team.inviteCode
     ? `${window.location.origin}/join/${team.inviteCode}`
