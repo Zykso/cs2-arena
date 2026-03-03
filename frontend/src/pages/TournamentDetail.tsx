@@ -141,9 +141,8 @@ export default function TournamentDetail() {
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-[#1a1d27] border border-[#2a2d3e] rounded-2xl p-6 w-full max-w-sm">
                 <h2 className="text-lg font-bold mb-4">Register a Team</h2>
-                <div className="space-y-2 mb-4">
-                  {myTeams
-                    .filter((team: any) => team.players.some((p: any) => p.user?.id === user?.id))
+                <div className="space-y-2 mb-4 max-h-72 overflow-y-auto">
+                  {(isAdmin ? myTeams : myTeams.filter((team: any) => team.players.some((p: any) => p.user?.id === user?.id)))
                     .map((team: any) => {
                       const alreadyIn = t.teams.some((tt: any) => tt.teamId === team.id);
                       return (
@@ -161,8 +160,8 @@ export default function TournamentDetail() {
                         </button>
                       );
                     })}
-                  {myTeams.filter((team: any) => team.players.some((p: any) => p.user?.id === user?.id)).length === 0 && (
-                    <p className="text-slate-500 text-sm text-center py-4">You don't own or belong to any teams yet.</p>
+                  {(isAdmin ? myTeams : myTeams.filter((team: any) => team.players.some((p: any) => p.user?.id === user?.id))).length === 0 && (
+                    <p className="text-slate-500 text-sm text-center py-4">No teams available.</p>
                   )}
                 </div>
                 <button onClick={() => setShowRegister(false)}
