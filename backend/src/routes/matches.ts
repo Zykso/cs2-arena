@@ -163,18 +163,28 @@ router.get('/:id/matchzy-config', async (req: Request, res: Response) => {
   const bo = match.bo ?? 1;
   const maplist = match.map ? [match.map] : ['de_mirage'];
 
-  const buildPlayers = (team: any): Record<string, string> => {
+  const buildPlayers = (team: any, exclude: Set<string> = new Set()): Record<string, string> => {
     const out: Record<string, string> = {};
     for (const slot of team?.players ?? []) {
-      if (slot.user?.steamId) out[slot.user.steamId] = slot.user.displayName ?? 'Player';
+      const sid = slot.user?.steamId;
+      if (sid && !exclude.has(sid)) out[sid] = slot.user.displayName ?? 'Player';
     }
     return out;
   };
 
+  // Build team1 players first, then exclude those SteamIDs from team2
+  // to prevent MatchZy rejecting the config when the same player appears in both teams.
+  const team1Players = buildPlayers(match.team1);
+  const team2Players = buildPlayers(match.team2, new Set(Object.keys(team1Players)));
+
+  // MatchZy requires matchid to be a JSON integer (validated with int.TryParse, cast to long).
+  // Derive a stable positive 32-bit integer from the first 8 hex chars of the UUID.
+  const numericMatchId = parseInt(match.id.replace(/-/g, '').slice(0, 8), 16) % 2147483647;
+
   res.json({
-    matchid: match.id,
-    team1: { name: match.team1?.name ?? 'Team 1', tag: match.team1?.tag ?? 'T1', players: buildPlayers(match.team1) },
-    team2: { name: match.team2?.name ?? 'Team 2', tag: match.team2?.tag ?? 'T2', players: buildPlayers(match.team2) },
+    matchid: numericMatchId,
+    team1: { name: match.team1?.name ?? 'Team 1', tag: match.team1?.tag ?? 'T1', players: team1Players },
+    team2: { name: match.team2?.name ?? 'Team 2', tag: match.team2?.tag ?? 'T2', players: team2Players },
     num_maps: bo,
     maplist,
     map_sides: maplist.map(() => 'knife'),
